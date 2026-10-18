@@ -1,46 +1,52 @@
 class Usuario {
-  final String id;
-  final String nome;
+  final int id;
+  final String username;
+  final String firstName;
+  final String lastName;
   final String email;
-  List<String> setor;
-  final String senha;
+  final String papel;
 
-  Usuario ({
+  const Usuario({
     required this.id,
-    required this.nome,
+    required this.username,
+    required this.firstName,
+    required this.lastName,
     required this.email,
-    required this.setor,
-    required this.senha
+    required this.papel,
   });
+
+  factory Usuario.fromMap(Map<String, dynamic> map) {
+    return Usuario(
+      id: int.parse(map['id'].toString()),
+      username: map['username']?.toString() ?? '',
+      firstName: map['first_name']?.toString() ?? '',
+      lastName: map['last_name']?.toString() ?? '',
+      email: map['email']?.toString() ?? '',
+      papel: map['papel']?.toString() ?? '',
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'nome': nome,
-      'setor': setor,
-      'reponsavel': email,
-      'senha': senha
+      'username': username,
+      'first_name': firstName,
+      'last_name': lastName,
+      'email': email,
+      'papel': papel,
     };
   }
 
-  factory Usuario.fromMap(Map<String, dynamic> map) {
-    return Usuario(
-      id: map['id'],
-      nome: map['nome'],
-      setor: map['setor'],
-      email: map['email'],
-      senha: map['senha']
-    );
-  }
+  String get nomeCompleto => '$firstName $lastName'.trim();
 
   @override
   String toString() {
-    return '''Usuario(
-      id: $id,
-      nome: $nome,
-      setor: $setor,
-      email: $email,
-      senha: $senha
-    )''';
+    return 'Usuario('
+        'id: $id, '
+        'username: $username, '
+        'nome: $nomeCompleto, '
+        'email: $email, '
+        'papel: $papel'
+        ')';
   }
 }

@@ -14,8 +14,8 @@ class QuickAction extends StatelessWidget {
     required this.onTap,
   });
 
-  static const double _iconBoxSize = 38;
-  static const double _radius = 8;
+  static const double _iconBoxSize = 42;
+  static const double _radius = 12;
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +28,11 @@ class QuickAction extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: borderRadius,
+        splashColor: AppColors.mainColor.withValues(alpha: 0.08),
+        highlightColor: AppColors.mainColor.withValues(alpha: 0.04),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: borderRadius,
             border: Border.all(color: AppColors.borderColor),
@@ -41,22 +44,33 @@ class QuickAction extends StatelessWidget {
                 height: _iconBoxSize,
                 decoration: BoxDecoration(
                   color: AppColors.mainColorLight,
-                  borderRadius: BorderRadius.circular(_radius - 1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: AppColors.mainColor, size: 20),
+                child: Icon(icon, color: AppColors.mainColor, size: 22),
               ),
-              const SizedBox(width: 10),
+
+              const SizedBox(width: 12),
+
               Expanded(
                 child: Text(
                   title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
+                    height: 1.3,
                   ),
                 ),
+              ),
+
+              const SizedBox(width: 4),
+
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 19,
+                color: AppColors.textMuted,
               ),
             ],
           ),

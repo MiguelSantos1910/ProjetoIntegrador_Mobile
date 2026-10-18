@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_integrador/presentation/widgets/layout/main_layout.dart';
 import 'package:mobile_integrador/presentation/pages/homePage/home.dart';
 import 'package:mobile_integrador/presentation/pages/qrCode/qrcode_page.dart';
+import 'package:mobile_integrador/presentation/pages/login/login_page.dart';
 
 class AppRoutes {
   static const String login = '/';
@@ -19,9 +20,42 @@ class AppRoutes {
 
   static Route<dynamic> generatedRoute(RouteSettings settings) {
     switch (settings.name) {
-      case home:
+      case login:
         return MaterialPageRoute(
-          builder: (_) => const MainLayout(child: HomePage()),
+          builder: (_) => const LoginPage(),
+          settings: settings,
+        );
+
+      case home:
+        final argumentos = settings.arguments;
+
+        if (argumentos is! Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => const LoginPage(),
+            settings: settings,
+          );
+        }
+
+        final accessToken = argumentos['accessToken'];
+        final username = argumentos['username'];
+
+        if (accessToken is! String ||
+            accessToken.isEmpty ||
+            username is! String ||
+            username.trim().isEmpty) {
+          return MaterialPageRoute(
+            builder: (_) => const LoginPage(),
+            settings: settings,
+          );
+        }
+
+        return MaterialPageRoute(
+          builder: (_) => MainLayout(
+            child: HomePage(
+              accessToken: accessToken,
+              username: username.trim(),
+            ),
+          ),
           settings: settings,
         );
 
@@ -33,7 +67,7 @@ class AppRoutes {
 
       default:
         return MaterialPageRoute(
-          builder: (_) => const MainLayout(child: HomePage()),
+          builder: (_) => const LoginPage(),
           settings: settings,
         );
     }

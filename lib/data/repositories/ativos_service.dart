@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../core/api/api_config.dart';
+import '../models/ativo.dart';
 
 class AtivosService {
   final http.Client _client;
@@ -14,54 +15,58 @@ class AtivosService {
     'Authorization': 'Bearer $accessToken',
   };
 
-  /// Busca os ativos na API Django usando o token JWT.
-  Future<List<dynamic>> buscarAtivos({required String accessToken}) async {
+  Future<List<Ativo>> buscarAtivos({required String accessToken}) async {
     final response = await _client.get(
       Uri.parse('${ApiConfig.baseUrl}/ativos/'),
       headers: _headers(accessToken),
     );
 
-    if (response.statusCode == 200) {
-      final dados = jsonDecode(response.body);
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Erro ao carregar ativos: '
+        '${response.statusCode} ${response.body}',
+      );
+    }
 
-      // Resposta em lista simples.
-      if (dados is List) {
-        return dados;
-      }
+    final dados = jsonDecode(response.body);
 
-      // Resposta paginada do Django REST Framework.
-      if (dados is Map<String, dynamic> && dados['results'] is List) {
-        return dados['results'] as List<dynamic>;
-      }
+    final List<dynamic> itens;
 
+    if (dados is List) {
+      itens = dados;
+    } else if (dados is Map<String, dynamic> && dados['results'] is List) {
+      itens = dados['results'] as List<dynamic>;
+    } else {
       throw Exception('Formato inesperado na resposta da API.');
     }
 
-    throw Exception(
-      'Erro ao carregar ativos: '
-      '${response.statusCode} ${response.body}',
-    );
+    return itens.map((item) {
+      if (item is! Map<String, dynamic>) {
+        throw const FormatException('Registro de ativo inválido.');
+      }
+
+      return Ativo.fromMap(item);
+    }).toList();
   }
 
-  /// Atualiza um ativo existente usando o token JWT.
   Future<void> atualizarAtivo({
     required int id,
-    required String ativo,
+    required String descricao,
+    required String tipo,
     required String status,
     required String sala,
-    required int localizacao,
-    required String codigoQr,
     required String accessToken,
+    String? numeroPatrimonio,
   }) async {
     final response = await _client.patch(
       Uri.parse('${ApiConfig.baseUrl}/ativos/$id/'),
       headers: _headers(accessToken),
       body: jsonEncode({
-        'Ativo': ativo,
-        'Status': status,
-        'Sala': sala,
-        'Localizacao': localizacao,
-        'QR Code': codigoQr,
+        'descricao': descricao,
+        'tipo': tipo,
+        'status': status,
+        'sala': sala,
+        'numero_patrimonio': numeroPatrimonio,
       }),
     );
 
@@ -73,7 +78,6 @@ class AtivosService {
     }
   }
 
-  /// Fecha o cliente HTTP quando o serviço não for mais utilizado.
   void dispose() {
     _client.close();
   }

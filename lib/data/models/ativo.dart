@@ -1,67 +1,59 @@
-class Ativos {
+class Ativo {
   final String id;
-  final String nome;
-  final String responsavel;
-  final List<String> categoria;
-  final String codigoPatrimonio;
+  final String tipo;
+  final String descricao;
+  final String? numeroPatrimonio;
   final String codigoQr;
-  final int localizacao;
-  final DateTime dataUtilizacao;
+  final String sala;
+  final String status;
+  final double? latitude;
+  final double? longitude;
+  final DateTime? dataCadastro;
+  final DateTime? atualizadoEm;
 
-  const Ativos({
+  const Ativo({
     required this.id,
-    required this.nome,
-    required this.responsavel,
-    required this.categoria,
-    required this.codigoPatrimonio,
+    required this.tipo,
+    required this.descricao,
+    required this.numeroPatrimonio,
     required this.codigoQr,
-    required this.localizacao,
-    required this.dataUtilizacao,
+    required this.sala,
+    required this.status,
+    this.latitude,
+    this.longitude,
+    this.dataCadastro,
+    this.atualizadoEm,
   });
 
-  factory Ativos.fromMap(Map<String, dynamic> map) {
-    final categoriaJson = map['categoria'];
-
-    return Ativos(
-      id: map['id'].toString(),
-      nome: map['nome']?.toString() ?? '',
-      responsavel: map['responsavel']?.toString() ?? '',
-      categoria: categoriaJson is List
-          ? categoriaJson.map((item) => item.toString()).toList()
-          : categoriaJson == null
-          ? <String>[]
-          : <String>[categoriaJson.toString()],
-      codigoPatrimonio: map['codigo_patrimonio']?.toString() ?? '',
+  factory Ativo.fromMap(Map<String, dynamic> map) {
+    return Ativo(
+      id: map['id']?.toString() ?? '',
+      tipo: map['tipo']?.toString() ?? '',
+      descricao: map['descricao']?.toString() ?? '',
+      numeroPatrimonio: map['numero_patrimonio']?.toString(),
       codigoQr: map['codigo_qr']?.toString() ?? '',
-      localizacao: int.parse(map['localizacao'].toString()),
-      dataUtilizacao: DateTime.parse(map['data_utilizacao'].toString()),
+      sala: map['sala']?.toString() ?? '',
+      status: map['status']?.toString() ?? '',
+      latitude: double.tryParse(map['latitude']?.toString() ?? ''),
+      longitude: double.tryParse(map['longitude']?.toString() ?? ''),
+      dataCadastro: DateTime.tryParse(map['data_cadastro']?.toString() ?? ''),
+      atualizadoEm: DateTime.tryParse(map['atualizado_em']?.toString() ?? ''),
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'nome': nome,
-      'responsavel': responsavel,
-      'categoria': categoria,
-      'codigo_patrimonio': codigoPatrimonio,
+      'tipo': tipo,
+      'descricao': descricao,
+      'numero_patrimonio': numeroPatrimonio,
       'codigo_qr': codigoQr,
-      'localizacao': localizacao,
-      'data_utilizacao': dataUtilizacao.toIso8601String(),
+      'sala': sala,
+      'status': status,
+      'latitude': latitude,
+      'longitude': longitude,
+      'data_cadastro': dataCadastro?.toIso8601String(),
+      'atualizado_em': atualizadoEm?.toIso8601String(),
     };
-  }
-
-  @override
-  String toString() {
-    return 'Ativos('
-        'id: $id, '
-        'nome: $nome, '
-        'responsavel: $responsavel, '
-        'categoria: $categoria, '
-        'codigoPatrimonio: $codigoPatrimonio, '
-        'codigoQr: $codigoQr, '
-        'localizacao: $localizacao, '
-        'dataUtilizacao: $dataUtilizacao'
-        ')';
   }
 }

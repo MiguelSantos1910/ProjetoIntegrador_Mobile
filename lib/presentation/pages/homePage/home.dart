@@ -31,7 +31,7 @@ class _HomePageState extends State<HomePage> {
   List<dynamic> _ativos = [];
 
   static const List<_StatusInfo> _statusInfo = [
-    _StatusInfo(chave: 'ATIVO', titulo: 'Disponíveis', cor: Color(0xFF16A34A)),
+    _StatusInfo(chave: 'ATIVO', titulo: 'Ativos', cor: Color(0xFF16A34A)),
     _StatusInfo(
       chave: 'EM_MANUTENCAO',
       titulo: 'Em manutenção',
@@ -42,7 +42,6 @@ class _HomePageState extends State<HomePage> {
       titulo: 'Devolvidos',
       cor: Color(0xFF64748B),
     ),
-    _StatusInfo(chave: 'INATIVO', titulo: 'Inativos', cor: Color(0xFFDC2626)),
   ];
 
   @override
@@ -58,6 +57,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _carregarAtivos() async {
+    if (!mounted) return;
+
     setState(() {
       _carregando = true;
       _erro = null;
@@ -68,34 +69,40 @@ class _HomePageState extends State<HomePage> {
         accessToken: widget.accessToken,
       );
 
+      // O AtivosService já retorna objetos do model Ativo.
+      // Não acesse os registros como Map usando item['id'].
       if (!mounted) return;
 
       setState(() {
         _ativos = resultado;
         _carregando = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
-        _erro = 'Não foi possível carregar os ativos.';
+        _erro =
+            'Não foi possível carregar os ativos. Verifique a conexão e tente novamente.';
         _carregando = false;
       });
     }
   }
 
   String _obterStatus(dynamic ativo) {
-    if (ativo is! Map) return '';
-
-    final status = ativo['Status'] ?? ativo['status'];
-
-    return status
-            ?.toString()
-            .trim()
-            .toUpperCase()
-            .replaceAll(' ', '_')
-            .replaceAll('-', '_') ??
-        '';
+    // A lista retornada pelo serviço contém instâncias do model Ativo.
+    // Por isso, lemos a propriedade status em vez de usar ativo['status'].
+    try {
+      final status = ativo.status;
+      return status
+          .toString()
+          .trim()
+          .toUpperCase()
+          .replaceAll(' ', '_')
+          .replaceAll('-', '_');
+    } catch (_) {
+      // Se algum registro não tiver a propriedade esperada, não o contabiliza.
+      return '';
+    }
   }
 
   int _contarStatus(String status) {
@@ -110,7 +117,7 @@ class _HomePageState extends State<HomePage> {
 
   int get _ativosEmManutencao => _contarStatus('EM_MANUTENCAO');
 
-  int get _ativosAtencao => _contarStatus('INATIVO');
+  int get _ativosDevolvidos => _contarStatus('DEVOLVIDO');
 
   Map<String, int> get _quantidadesPorStatus {
     return {
@@ -175,7 +182,7 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 32),
 
-                    _buildTituloSecao('Notificações Recentes'),
+                    _buildTituloSecao('Notificações Recentes (demonstrativo)'),
 
                     const SizedBox(height: 14),
 
@@ -183,7 +190,7 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 32),
 
-                    _buildTituloSecao('Próximas Manutenções'),
+                    _buildTituloSecao('Próximas Manutenções (demonstrativo)'),
 
                     const SizedBox(height: 14),
 
@@ -251,7 +258,11 @@ class _HomePageState extends State<HomePage> {
         '$_ativosEmManutencao',
         Icons.build_outlined,
       ),
-      _ResumoData('Atenção', '$_ativosAtencao', Icons.warning_amber_outlined),
+      _ResumoData(
+        'Devolvidos',
+        '$_ativosDevolvidos',
+        Icons.assignment_return_outlined,
+      ),
     ];
 
     return GridView.builder(
@@ -511,6 +522,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Conteúdo demonstrativo: o serializer/endpoint de ativos fornecido
+  // não disponibiliza notificações. Integrar quando houver endpoint próprio.
   Widget _buildNotificacoes(BuildContext context) {
     return Column(
       children: [
@@ -537,6 +550,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Conteúdo demonstrativo: as manutenções devem vir de um endpoint próprio
+  // de ordens de serviço, não da listagem de ativos.
   Widget _buildManutencoes() {
     return const Column(
       children: [

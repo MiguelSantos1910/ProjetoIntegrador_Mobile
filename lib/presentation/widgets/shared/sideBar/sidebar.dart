@@ -4,7 +4,6 @@ import 'package:mobile_integrador/routes/routes.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/appColors/app_colors.dart';
 
 class SideBar extends StatelessWidget {
-  // Mantidos opcionais para facilitar a migração do código existente.
   final bool aberta;
   final VoidCallback? onToggle;
 
@@ -18,7 +17,7 @@ class SideBar extends StatelessWidget {
       AppRoutes.ordemServico,
     ),
     _SidebarItemData(Icons.qr_code_scanner, 'Escanear QR', AppRoutes.qrCode),
-    _SidebarItemData(Icons.list_alt_outlined, 'Ativos', AppRoutes.exibirAtivos),
+    _SidebarItemData(Icons.list_alt_outlined, 'Ativos', AppRoutes.ativos),
   ];
 
   static const List<_SidebarItemData> _itensExtras = [
@@ -42,7 +41,47 @@ class SideBar extends StatelessWidget {
   void _navigate(BuildContext context, String route, String? rotaAtual) {
     if (route == rotaAtual) return;
 
-    Navigator.pushReplacementNamed(context, route);
+    // Recupera os argumentos da rota atual.
+    final argumentosAtuais = ModalRoute.of(context)?.settings.arguments;
+
+    // Preserva os dados da sessão durante a navegação.
+    Map<String, dynamic>? argumentos;
+
+    if (argumentosAtuais is Map<String, dynamic>) {
+      argumentos = Map<String, dynamic>.from(argumentosAtuais);
+    }
+
+    // A Home e a tela de Ativos dependem dos dados da sessão.
+    if (route == AppRoutes.home || route == AppRoutes.ativos) {
+      final accessToken = argumentos?['accessToken'];
+      final username = argumentos?['username'];
+
+      if (accessToken is! String || accessToken.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível recuperar sua sessão. Faça login novamente.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      // A Home exige token e nome de usuário.
+      if (route == AppRoutes.home &&
+          (username is! String || username.trim().isEmpty)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Dados do usuário não encontrados. Faça login novamente.',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    Navigator.pushReplacementNamed(context, route, arguments: argumentos);
   }
 
   @override

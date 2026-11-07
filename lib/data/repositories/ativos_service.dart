@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../core/api/api_config.dart';
 import '../../core/api/api_exception.dart';
 import '../models/ativo.dart';
+import '../models/movimentacao.dart';
 
 class AtivosService {
   final http.Client _client;
@@ -91,6 +92,48 @@ class AtivosService {
         mensagemPadrao: 'Não foi possível atualizar o ativo.',
       );
     }
+  }
+
+  // HISTÓRICO DE MOVIMENTAÇÕES (todos os ativos, do mais recente ao mais
+  // antigo). A API não pagina: [limite] corta a lista aqui no app.
+  Future<List<Movimentacao>> listarHistorico({
+    required String accessToken,
+    int? limite,
+  }) async {
+    final http.Response response;
+
+    try {
+      response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/historico/'),
+        headers: _headers(accessToken),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    if (response.statusCode != 200) {
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível carregar as movimentações.',
+      );
+    }
+
+    final dados = jsonDecode(utf8.decode(response.bodyBytes));
+    final itens = dados is Map<String, dynamic> && dados['results'] is List
+        ? dados['results'] as List<dynamic>
+        : dados as List<dynamic>;
+
+    final movimentacoes = itens
+        .whereType<Map<String, dynamic>>()
+        .map(Movimentacao.fromMap)
+        .toList()
+      ..sort(
+        (a, b) => (b.data ?? DateTime(0)).compareTo(a.data ?? DateTime(0)),
+      );
+
+    return limite == null
+        ? movimentacoes
+        : movimentacoes.take(limite).toList();
   }
 
   // CONSULTAR UM ATIVO

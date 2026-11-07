@@ -78,6 +78,74 @@ class StatusAtivo {
   }
 }
 
+/// Eventos do histórico do ativo (movimentações), com os mesmos textos
+/// do painel web (DetalheAtivo).
+class EventoAtivo {
+  EventoAtivo._();
+
+  static String rotulo(String evento) {
+    switch (evento.trim().toUpperCase()) {
+      case 'CADASTRO':
+        return 'Cadastro do ativo';
+      case 'ENTREGA':
+        return 'Entrega do ativo';
+      case 'DEVOLUCAO':
+        return 'Devolução do ativo';
+      case 'MANUTENCAO':
+        return 'Manutenção do ativo';
+      case 'INATIVO':
+        return 'Inativação do ativo';
+      case 'REATIVACAO':
+        return 'Reativação do ativo';
+      case 'RETORNO':
+        return 'Retorno ao uso';
+      default:
+        return evento.trim().isEmpty ? 'Movimentação' : evento;
+    }
+  }
+
+  static Color cor(String evento) {
+    switch (evento.trim().toUpperCase()) {
+      case 'CADASTRO':
+        return const Color(0xFF0D9488);
+      case 'ENTREGA':
+        return const Color(0xFF2563EB);
+      case 'DEVOLUCAO':
+        return const Color(0xFF64748B);
+      case 'MANUTENCAO':
+        return const Color(0xFFF59E0B);
+      case 'INATIVO':
+        return const Color(0xFFB91C1C);
+      case 'REATIVACAO':
+      case 'RETORNO':
+        return const Color(0xFF16A34A);
+      default:
+        return const Color(0xFF94A3B8);
+    }
+  }
+
+  static IconData icone(String evento) {
+    switch (evento.trim().toUpperCase()) {
+      case 'CADASTRO':
+        return Icons.add_box_outlined;
+      case 'ENTREGA':
+        return Icons.outbox_outlined;
+      case 'DEVOLUCAO':
+        return Icons.assignment_return_outlined;
+      case 'MANUTENCAO':
+        return Icons.build_outlined;
+      case 'INATIVO':
+        return Icons.block_outlined;
+      case 'REATIVACAO':
+        return Icons.restart_alt_rounded;
+      case 'RETORNO':
+        return Icons.check_circle_outline_rounded;
+      default:
+        return Icons.swap_horiz_rounded;
+    }
+  }
+}
+
 /// Status das ordens de manutenção (chamados), como gravados no back.
 class StatusOrdem {
   StatusOrdem._();

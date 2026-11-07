@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../core/api/api_config.dart';
+import '../../core/api/api_exception.dart';
 import '../models/ativo.dart';
 
 class AtivosService {
@@ -16,19 +17,27 @@ class AtivosService {
   };
 
   Future<List<Ativo>> buscarAtivos({required String accessToken}) async {
-    final response = await _client.get(
-      Uri.parse('${ApiConfig.baseUrl}/ativos/'),
-      headers: _headers(accessToken),
-    );
+    final http.Response response;
 
+    try {
+      response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/ativos/'),
+        headers: _headers(accessToken),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    // Com statusCode, o SessaoProvider.comToken reconhece o 401 e renova.
     if (response.statusCode != 200) {
-      throw Exception(
-        'Erro ao carregar ativos: '
-        '${response.statusCode} ${response.body}',
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível carregar os ativos.',
       );
     }
 
-    final dados = jsonDecode(response.body);
+    // utf8 explícito: sem charset na resposta, o http leria os acentos errado.
+    final dados = jsonDecode(utf8.decode(response.bodyBytes));
 
     final List<dynamic> itens;
 
@@ -37,7 +46,7 @@ class AtivosService {
     } else if (dados is Map<String, dynamic> && dados['results'] is List) {
       itens = dados['results'] as List<dynamic>;
     } else {
-      throw Exception('Formato inesperado na resposta da API.');
+      throw const ApiException('Formato inesperado na resposta da API.');
     }
 
     return itens.map((item) {
@@ -58,22 +67,28 @@ class AtivosService {
     required String accessToken,
     String? numeroPatrimonio,
   }) async {
-    final response = await _client.patch(
-      Uri.parse('${ApiConfig.baseUrl}/ativos/$id/'),
-      headers: _headers(accessToken),
-      body: jsonEncode({
-        'descricao': descricao,
-        'tipo': tipo,
-        'status': status,
-        'sala': sala,
-        'numero_patrimonio': numeroPatrimonio,
-      }),
-    );
+    final http.Response response;
+
+    try {
+      response = await _client.patch(
+        Uri.parse('${ApiConfig.baseUrl}/ativos/$id/'),
+        headers: _headers(accessToken),
+        body: jsonEncode({
+          'descricao': descricao,
+          'tipo': tipo,
+          'status': status,
+          'sala': sala,
+          'numero_patrimonio': numeroPatrimonio,
+        }),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
-        'Erro ao atualizar ativo: '
-        '${response.statusCode} ${response.body}',
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível atualizar o ativo.',
       );
     }
   }

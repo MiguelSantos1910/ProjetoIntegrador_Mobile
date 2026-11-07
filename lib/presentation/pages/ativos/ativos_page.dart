@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:mobile_integrador/core/utils/formatar_data.dart';
 import 'package:mobile_integrador/data/models/ativo.dart';
 import 'package:mobile_integrador/data/repositories/ativos_service.dart';
 import 'package:mobile_integrador/presentation/providers/sessao_provider.dart';
 import 'package:mobile_integrador/routes/routes.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/appColors/app_colors.dart';
+import 'package:mobile_integrador/presentation/widgets/shared/botaoApp/custom_button.dart';
+import 'package:mobile_integrador/presentation/widgets/shared/linhaDetalhe/linha_detalhe.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/statusBadge/status_badge.dart';
 
 class AtivosPage extends StatefulWidget {
@@ -137,17 +140,11 @@ class _AtivosPageState extends State<AtivosPage> {
   // Detalhe do ativo (folha inferior)
   // ------------------------------------------------------------------
 
-  String _formatarData(DateTime? data) {
-    if (data == null) return '—';
-
-    final local = data.toLocal();
-    String doisDigitos(int valor) => valor.toString().padLeft(2, '0');
-
-    return '${doisDigitos(local.day)}/${doisDigitos(local.month)}/'
-        '${local.year} ${doisDigitos(local.hour)}:${doisDigitos(local.minute)}';
-  }
-
   void _abrirDetalhe(Ativo ativo) {
+    final podeAbrirChamado =
+        context.read<SessaoProvider>().podeAlterar &&
+        StatusAtivo.normalizar(ativo.status) != StatusAtivo.inativo;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -190,40 +187,55 @@ class _AtivosPageState extends State<AtivosPage> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                _LinhaDetalhe(
+                LinhaDetalhe(
                   icone: Icons.category_outlined,
                   rotulo: 'Tipo',
                   valor: StatusAtivo.rotuloTipo(ativo.tipo),
                 ),
-                _LinhaDetalhe(
+                LinhaDetalhe(
                   icone: Icons.confirmation_number_outlined,
                   rotulo: 'Patrimônio',
                   valor: (ativo.numeroPatrimonio ?? '').isEmpty
                       ? 'Não informado'
                       : ativo.numeroPatrimonio!,
                 ),
-                _LinhaDetalhe(
+                LinhaDetalhe(
                   icone: Icons.place_outlined,
                   rotulo: 'Local (sala)',
                   valor: ativo.sala.isEmpty ? 'Não informado' : ativo.sala,
                 ),
-                _LinhaDetalhe(
+                LinhaDetalhe(
                   icone: Icons.qr_code_2_rounded,
                   rotulo: 'Código QR',
                   valor: ativo.codigoQr.isEmpty ? '—' : ativo.codigoQr,
                   selecionavel: true,
                 ),
-                _LinhaDetalhe(
+                LinhaDetalhe(
                   icone: Icons.event_outlined,
                   rotulo: 'Cadastrado em',
-                  valor: _formatarData(ativo.dataCadastro),
+                  valor: dataHoraFormatada(ativo.dataCadastro),
                 ),
-                _LinhaDetalhe(
+                LinhaDetalhe(
                   icone: Icons.update_outlined,
                   rotulo: 'Atualizado em',
-                  valor: _formatarData(ativo.atualizadoEm),
+                  valor: dataHoraFormatada(ativo.atualizadoEm),
                   ultima: true,
                 ),
+                // Abrir chamado: só professor e suporte, e não para inativos.
+                if (podeAbrirChamado) ...[
+                  const SizedBox(height: 20),
+                  BotaoApp(
+                    texto: 'Abrir chamado',
+                    icone: Icons.report_problem_outlined,
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(this.context).pushNamed(
+                        AppRoutes.ordemServico,
+                        arguments: ativo.id,
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),
@@ -605,66 +617,6 @@ class _IconeTipo extends StatelessWidget {
         StatusAtivo.iconeTipo(tipo),
         color: AppColors.mainColor,
         size: tamanho * 0.5,
-      ),
-    );
-  }
-}
-
-// ================================================================
-// LINHA DO DETALHE (ícone, rótulo e valor)
-// ================================================================
-
-class _LinhaDetalhe extends StatelessWidget {
-  final IconData icone;
-  final String rotulo;
-  final String valor;
-  final bool selecionavel;
-  final bool ultima;
-
-  const _LinhaDetalhe({
-    required this.icone,
-    required this.rotulo,
-    required this.valor,
-    this.selecionavel = false,
-    this.ultima = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const estiloValor = TextStyle(
-      color: AppColors.textPrimary,
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: ultima
-            ? null
-            : const Border(bottom: BorderSide(color: AppColors.borderColor)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icone, size: 20, color: AppColors.mainColor),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 110,
-            child: Text(
-              rotulo,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          Expanded(
-            child: selecionavel
-                ? SelectableText(valor, style: estiloValor)
-                : Text(valor, style: estiloValor),
-          ),
-        ],
       ),
     );
   }

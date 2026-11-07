@@ -78,6 +78,99 @@ class StatusAtivo {
   }
 }
 
+/// Status das ordens de manutenção (chamados), como gravados no back.
+class StatusOrdem {
+  StatusOrdem._();
+
+  static const String pendente = 'Pendente';
+  static const String emAndamento = 'Em andamento';
+  static const String concluida = 'Concluída';
+  static const String cancelada = 'Cancelada';
+
+  static const List<String> todos = [
+    pendente,
+    emAndamento,
+    concluida,
+    cancelada,
+  ];
+
+  /// Ainda precisa de atendimento.
+  static bool aberta(String status) =>
+      status == pendente || status == emAndamento;
+
+  static Color cor(String status) {
+    switch (status) {
+      case pendente:
+        return const Color(0xFFF59E0B);
+      case emAndamento:
+        return const Color(0xFF2563EB);
+      case concluida:
+        return const Color(0xFF16A34A);
+      case cancelada:
+        return const Color(0xFFB91C1C);
+      default:
+        return const Color(0xFF94A3B8);
+    }
+  }
+
+  static IconData icone(String status) {
+    switch (status) {
+      case pendente:
+        return Icons.schedule_rounded;
+      case emAndamento:
+        return Icons.build_circle_outlined;
+      case concluida:
+        return Icons.check_circle_outline_rounded;
+      case cancelada:
+        return Icons.cancel_outlined;
+      default:
+        return Icons.help_outline_rounded;
+    }
+  }
+}
+
+/// Etiqueta colorida genérica (fundo claro e texto na cor).
+class Etiqueta extends StatelessWidget {
+  final String texto;
+  final Color cor;
+
+  const Etiqueta({super.key, required this.texto, required this.cor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(
+          color: cor,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Etiqueta com o status de um chamado (ordem de manutenção).
+class StatusOrdemBadge extends StatelessWidget {
+  final String status;
+
+  const StatusOrdemBadge({super.key, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    return Etiqueta(
+      texto: status.isEmpty ? 'Não informado' : status,
+      cor: StatusOrdem.cor(status),
+    );
+  }
+}
+
 /// Etiqueta colorida com o status do ativo.
 class StatusBadge extends StatelessWidget {
   final String status;

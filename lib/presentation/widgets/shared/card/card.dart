@@ -24,7 +24,16 @@ class CardApp extends StatelessWidget {
 
         child: Row(
           children: [
-            Icon(icone, color: AppColors.mainColor, size: 28),
+            // Ícone no padrão da Home: quadrado verde-claro arredondado.
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.mainColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icone, color: AppColors.mainColor, size: 24),
+            ),
 
             const SizedBox(width: 12),
 

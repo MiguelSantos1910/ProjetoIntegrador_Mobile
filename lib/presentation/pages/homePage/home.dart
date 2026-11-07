@@ -3,10 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:mobile_integrador/data/models/ativo.dart';
+import 'package:mobile_integrador/data/models/ordem_manutencao.dart';
 import 'package:mobile_integrador/data/repositories/ativos_service.dart';
+import 'package:mobile_integrador/data/repositories/ordens_service.dart';
 import 'package:mobile_integrador/presentation/providers/sessao_provider.dart';
 import 'package:mobile_integrador/routes/routes.dart';
-import 'package:mobile_integrador/presentation/widgets/shared/cardsManutencao/maintence_card.dart';
+import 'package:mobile_integrador/presentation/widgets/shared/cardChamado/card_chamado.dart';
+import 'package:mobile_integrador/presentation/widgets/shared/statusBadge/status_badge.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/notificacao/notification.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/appColors/app_colors.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/card/card.dart';
@@ -26,6 +30,14 @@ class _HomePageState extends State<HomePage> {
   String? _erro;
   List<dynamic> _ativos = [];
 
+  // Chamados em aberto (ordens Pendente e Em andamento), da API.
+  static const int _limiteChamados = 5;
+  final OrdensService _ordensService = OrdensService();
+  List<OrdemManutencao> _chamadosAbertos = [];
+  int _totalChamadosAbertos = 0;
+  bool _carregandoChamados = true;
+  String? _erroChamados;
+
   static const List<_StatusInfo> _statusInfo = [
     _StatusInfo(chave: 'ATIVO', titulo: 'Ativos', cor: Color(0xFF16A34A)),
     _StatusInfo(
@@ -44,11 +56,13 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _carregarAtivos();
+    _carregarChamados();
   }
 
   @override
   void dispose() {
     _ativosService.dispose();
+    _ordensService.dispose();
     super.dispose();
   }
 
@@ -197,11 +211,11 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 32),
 
-                    _buildTituloSecao('Próximas Manutenções (demonstrativo)'),
+                    _buildCabecalhoChamados(),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
 
-                    _buildManutencoes(),
+                    _buildChamados(),
                   ],
                 ),
               ),
@@ -209,6 +223,140 @@ class _HomePageState extends State<HomePage> {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _carregarChamados() async {
+    if (!mounted) return;
+
+    setState(() {
+      _carregandoChamados = _chamadosAbertos.isEmpty;
+      _erroChamados = null;
+    });
+
+    try {
+      final ordens = await context.read<SessaoProvider>().comToken(
+        (token) => _ordensService.listarOrdens(accessToken: token),
+      );
+
+      if (!mounted) return;
+
+      final abertos = ordens
+          .where((ordem) => StatusOrdem.aberta(ordem.status))
+          .toList()
+        ..sort(
+          (a, b) => (b.dataAbertura ?? DateTime(0)).compareTo(
+            a.dataAbertura ?? DateTime(0),
+          ),
+        );
+
+      setState(() {
+        _totalChamadosAbertos = abertos.length;
+        _chamadosAbertos = abertos.take(_limiteChamados).toList();
+        _carregandoChamados = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _erroChamados = 'Não foi possível carregar os chamados.';
+        _carregandoChamados = false;
+      });
+    }
+  }
+
+  /// Ativo de cada chamado, a partir da lista já carregada na Home.
+  Ativo? _ativoDoChamado(OrdemManutencao ordem) {
+    for (final item in _ativos) {
+      if (item is Ativo && item.id == ordem.ativoId.toString()) return item;
+    }
+    return null;
+  }
+
+  Future<void> _abrirChamado(OrdemManutencao ordem) async {
+    final alterado = await Navigator.of(context).pushNamed(
+      AppRoutes.detalheChamado,
+      arguments: ordem.id,
+    );
+
+    if (alterado == true && mounted) {
+      _carregarChamados();
+      _carregarAtivos();
+    }
+  }
+
+  Widget _buildCabecalhoChamados() {
+    return Row(
+      children: [
+        Expanded(child: _buildTituloSecao('Chamados em Aberto')),
+        TextButton(
+          onPressed: () =>
+              Navigator.of(context).pushReplacementNamed(AppRoutes.statusOrdem),
+          style: TextButton.styleFrom(foregroundColor: AppColors.mainColor),
+          child: Text(
+            _totalChamadosAbertos > _limiteChamados
+                ? 'Ver todos ($_totalChamadosAbertos)'
+                : 'Ver todos',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChamados() {
+    if (_carregandoChamados) return const _EstadoCarregamento();
+
+    if (_erroChamados != null) {
+      return _PainelGrafico(
+        titulo: 'Chamados indisponíveis',
+        subtitulo: _erroChamados!,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _carregarChamados,
+            style: TextButton.styleFrom(foregroundColor: AppColors.mainColor),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Tentar novamente'),
+          ),
+        ),
+      );
+    }
+
+    if (_chamadosAbertos.isEmpty) {
+      final podeAbrir = context.watch<SessaoProvider>().podeAlterar;
+
+      return _PainelGrafico(
+        titulo: 'Nenhum chamado em aberto',
+        subtitulo: 'Todos os chamados foram concluídos ou cancelados.',
+        child: podeAbrir
+            ? Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.ordemServico),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.mainColor,
+                  ),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Abrir chamado'),
+                ),
+              )
+            : const SizedBox.shrink(),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final ordem in _chamadosAbertos) ...[
+          CardChamado(
+            ordem: ordem,
+            ativo: _ativoDoChamado(ordem),
+            onTap: () => _abrirChamado(ordem),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
     );
   }
 
@@ -586,26 +734,6 @@ class _HomePageState extends State<HomePage> {
           onTap: () {
             Navigator.pushNamed(context, AppRoutes.ordemServico);
           },
-        ),
-      ],
-    );
-  }
-
-  // Conteúdo demonstrativo: as manutenções devem vir de um endpoint próprio
-  // de ordens de serviço, não da listagem de ativos.
-  Widget _buildManutencoes() {
-    return const Column(
-      children: [
-        MaintenanceCard(
-          asset: 'Notebook Dell Latitude 5520',
-          date: '20/09/2026',
-          type: 'Manutenção preventiva',
-        ),
-        SizedBox(height: 12),
-        MaintenanceCard(
-          asset: 'Projetor Epson',
-          date: '25/09/2026',
-          type: 'Limpeza',
         ),
       ],
     );

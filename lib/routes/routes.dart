@@ -8,6 +8,9 @@ import 'package:mobile_integrador/presentation/pages/qrCode/qrcode_page.dart';
 import 'package:mobile_integrador/presentation/pages/ativos/ativos_page.dart';
 import 'package:mobile_integrador/presentation/pages/login/login_page.dart';
 import 'package:mobile_integrador/presentation/pages/cadastro/cadastro_page.dart';
+import 'package:mobile_integrador/presentation/pages/ordemServico/ordem_servico_page.dart';
+import 'package:mobile_integrador/presentation/pages/ordemServico/detalhe_chamado_page.dart';
+import 'package:mobile_integrador/presentation/pages/statusOrdem/chamados_page.dart';
 
 class AppRoutes {
   static const String login = '/';
@@ -19,6 +22,7 @@ class AppRoutes {
   static const String ativos = '/ativos';
   static const String localizarAtivo = '/localizar-ativo';
   static const String statusOrdem = '/status';
+  static const String detalheChamado = '/chamado';
   static const String configuracoes = '/configuracao';
   static const String sair = '/sair';
 
@@ -45,6 +49,29 @@ class AppRoutes {
       case qrCode:
         return _rotaProtegida(settings, const QrCodePage());
 
+      // Argumento opcional: id do ativo já selecionado.
+      case ordemServico:
+        final ativoId = settings.arguments;
+        return _rotaProtegida(
+          settings,
+          OrdemServicoPage(ativoIdInicial: ativoId is String ? ativoId : null),
+        );
+
+      case statusOrdem:
+        return _rotaProtegida(settings, const ChamadosPage());
+
+      // Argumento obrigatório: id da ordem. Tela de segundo nível, sem menu.
+      case detalheChamado:
+        final ordemId = settings.arguments;
+        if (ordemId is! int) {
+          return _rotaProtegida(settings, const ChamadosPage());
+        }
+        return _rotaProtegida(
+          settings,
+          DetalheChamadoPage(ordemId: ordemId),
+          comMenu: false,
+        );
+
       // Rotas sem tela ainda (ex.: itens do menu em construção).
       default:
         return MaterialPageRoute(
@@ -54,15 +81,19 @@ class AppRoutes {
     }
   }
 
+  /// Só abre a página se houver sessão; senão, mostra o login.
+  /// [comMenu] coloca a barra de navegação inferior (MainLayout).
   static MaterialPageRoute<dynamic> _rotaProtegida(
     RouteSettings settings,
-    Widget pagina,
-  ) {
+    Widget pagina, {
+    bool comMenu = true,
+  }) {
     return MaterialPageRoute(
       settings: settings,
       builder: (context) {
         final logado = context.read<SessaoProvider>().logado;
-        return logado ? MainLayout(child: pagina) : const LoginPage();
+        if (!logado) return const LoginPage();
+        return comMenu ? MainLayout(child: pagina) : pagina;
       },
     );
   }

@@ -28,6 +28,10 @@ class FormData extends StatefulWidget {
   final bool autocorrect;
   final bool enabled;
 
+  /// Linhas do campo (ex.: 4 para uma descrição). Senha é sempre 1 linha.
+  final int maxLines;
+  final int? maxLength;
+
   const FormData({
     super.key,
     required this.hintText,
@@ -43,37 +47,27 @@ class FormData extends StatefulWidget {
     this.autofillHints,
     this.autocorrect = true,
     this.enabled = true,
+    this.maxLines = 1,
+    this.maxLength,
   });
 
-  @override
-  State<FormData> createState() => _FormDataState();
-}
-
-class _FormDataState extends State<FormData> {
-  bool _mostrarSenha = false;
-
-  InputDecoration _decoracao() {
+  /// Decoração padrão dos campos do app. Também serve para campos que não
+  /// são TextFormField (ex.: um seletor), para manter o mesmo visual.
+  static InputDecoration decoracaoPadrao({
+    required String hintText,
+    IconData? prefixIcon,
+    Widget? suffixIcon,
+    String? errorText,
+    bool alinharNoTopo = false,
+  }) {
     return InputDecoration(
-      labelText: widget.hintText,
-      prefixIcon: widget.prefixIcon != null
-          ? Icon(widget.prefixIcon, color: AppColors.mainColor)
+      labelText: hintText,
+      alignLabelWithHint: alinharNoTopo,
+      errorText: errorText,
+      prefixIcon: prefixIcon != null
+          ? Icon(prefixIcon, color: AppColors.mainColor)
           : null,
-      suffixIcon: widget.isPassword
-          ? IconButton(
-              tooltip: _mostrarSenha ? 'Ocultar senha' : 'Mostrar senha',
-              onPressed: () {
-                setState(() {
-                  _mostrarSenha = !_mostrarSenha;
-                });
-              },
-              icon: Icon(
-                _mostrarSenha
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                color: AppColors.textSecondary,
-              ),
-            )
-          : null,
+      suffixIcon: suffixIcon,
       filled: true,
       fillColor: AppColors.lightBackgroundColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -102,6 +96,37 @@ class _FormDataState extends State<FormData> {
   }
 
   @override
+  State<FormData> createState() => _FormDataState();
+}
+
+class _FormDataState extends State<FormData> {
+  bool _mostrarSenha = false;
+
+  InputDecoration _decoracao() {
+    return FormData.decoracaoPadrao(
+      hintText: widget.hintText,
+      prefixIcon: widget.prefixIcon,
+      alinharNoTopo: widget.maxLines > 1,
+      suffixIcon: widget.isPassword
+          ? IconButton(
+              tooltip: _mostrarSenha ? 'Ocultar senha' : 'Mostrar senha',
+              onPressed: () {
+                setState(() {
+                  _mostrarSenha = !_mostrarSenha;
+                });
+              },
+              icon: Icon(
+                _mostrarSenha
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: AppColors.textSecondary,
+              ),
+            )
+          : null,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final campo = TextFormField(
       controller: widget.controller,
@@ -112,6 +137,9 @@ class _FormDataState extends State<FormData> {
       enableSuggestions: !widget.isPassword,
       autofillHints: widget.autofillHints,
       enabled: widget.enabled,
+      maxLines: widget.isPassword ? 1 : widget.maxLines,
+      minLines: 1,
+      maxLength: widget.maxLength,
       validator: widget.validator,
       onChanged: widget.onChanged,
       onFieldSubmitted: widget.onFieldSubmitted,

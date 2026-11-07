@@ -93,6 +93,61 @@ class AtivosService {
     }
   }
 
+  // CONSULTAR UM ATIVO
+  Future<Ativo> buscarAtivo({
+    required String accessToken,
+    required String id,
+  }) async {
+    final http.Response response;
+
+    try {
+      response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/ativos/$id/'),
+        headers: _headers(accessToken),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    if (response.statusCode != 200) {
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível carregar o ativo.',
+      );
+    }
+
+    return Ativo.fromMap(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  // MUDAR SÓ O STATUS (ex.: EM_MANUTENCAO). O back grava o evento
+  // correspondente no histórico do ativo (movimentação).
+  Future<void> atualizarStatus({
+    required String accessToken,
+    required String id,
+    required String status,
+  }) async {
+    final http.Response response;
+
+    try {
+      response = await _client.patch(
+        Uri.parse('${ApiConfig.baseUrl}/ativos/$id/'),
+        headers: _headers(accessToken),
+        body: jsonEncode({'status': status}),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível atualizar o status do ativo.',
+      );
+    }
+  }
+
   void dispose() {
     _client.close();
   }

@@ -171,6 +171,44 @@ class AtivosService {
     return encontrados.isEmpty ? null : Ativo.fromMap(encontrados.first);
   }
 
+  // MOVER DE SALA: PATCH /ativos/<id>/ só com a sala (até 20 caracteres).
+  // Professor e suporte; o aluno recebe 403.
+  Future<Ativo> atualizarSala({
+    required String accessToken,
+    required String id,
+    required String sala,
+  }) async {
+    final http.Response response;
+
+    try {
+      response = await _client.patch(
+        Uri.parse('${ApiConfig.baseUrl}/ativos/$id/'),
+        headers: _headers(accessToken),
+        body: jsonEncode({'sala': sala}),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    if (response.statusCode == 403) {
+      throw const ApiException(
+        'Somente professor e suporte técnico podem mover ativos.',
+        statusCode: 403,
+      );
+    }
+
+    if (response.statusCode != 200) {
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível mover o ativo.',
+      );
+    }
+
+    return Ativo.fromMap(
+      jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
   // CONSULTAR UM ATIVO
   Future<Ativo> buscarAtivo({
     required String accessToken,

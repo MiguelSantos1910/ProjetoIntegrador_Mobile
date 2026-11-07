@@ -11,6 +11,8 @@ import 'package:mobile_integrador/presentation/pages/cadastro/cadastro_page.dart
 import 'package:mobile_integrador/presentation/pages/ordemServico/ordem_servico_page.dart';
 import 'package:mobile_integrador/presentation/pages/ordemServico/detalhe_chamado_page.dart';
 import 'package:mobile_integrador/presentation/pages/statusOrdem/chamados_page.dart';
+import 'package:mobile_integrador/presentation/pages/configuracoes/configuracoes_page.dart';
+import 'package:mobile_integrador/presentation/pages/localizador/localizar_page.dart';
 
 class AppRoutes {
   static const String login = '/';
@@ -59,6 +61,12 @@ class AppRoutes {
 
       case statusOrdem:
         return _rotaProtegida(settings, const ChamadosPage());
+
+      case configuracoes:
+        return _rotaProtegida(settings, const ConfiguracoesPage());
+
+      case localizarAtivo:
+        return _rotaProtegida(settings, const LocalizarPage());
 
       // Argumento obrigatório: id da ordem. Tela de segundo nível, sem menu.
       case detalheChamado:

@@ -141,37 +141,95 @@ class UsuariosService {
     }
   }
 
-  // ATUALIZAR USUÁRIO
-  Future<void> atualizarUsuario({
-    required int id,
-    required String nome,
-    required String username,
-    required String email,
+  // ATUALIZAR O PRÓPRIO PERFIL (nome e e-mail)
+  // PATCH /api/contas/usuarios/<id>/ — o back só permite ao professor.
+  Future<void> atualizarPerfil({
     required String accessToken,
-    String? password,
+    required int id,
+    required String firstName,
+    required String lastName,
+    required String email,
   }) async {
-    final dados = <String, dynamic>{
-      'nome': nome,
-      'username': username,
-      'email': email,
-    };
+    final http.Response response;
 
-    if (password != null && password.isNotEmpty) {
-      dados['password'] = password;
+    try {
+      response = await _client.patch(
+        Uri.parse('${ApiConfig.baseUrl}$_usuariosPath$id/'),
+        headers: {..._headers, 'Authorization': 'Bearer $accessToken'},
+        body: jsonEncode({
+          'first_name': firstName,
+          'last_name': lastName,
+          'email': email,
+        }),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
     }
 
-    final response = await _client.patch(
-      Uri.parse('${ApiConfig.baseUrl}$_usuariosPath$id/'),
-      headers: {..._headers, 'Authorization': 'Bearer $accessToken'},
-      body: jsonEncode(dados),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception(
-        'Erro ao atualizar usuário: '
-        '${response.statusCode} ${response.body}',
+    if (response.statusCode == 403) {
+      throw const ApiException(
+        'Somente o professor pode alterar nome e e-mail.',
+        statusCode: 403,
       );
     }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível salvar o perfil.',
+      );
+    }
+  }
+
+  // ALTERAR A PRÓPRIA SENHA (qualquer papel)
+  // PATCH /api/contas/usuarios/<id>/senha/ — o back valida a força da senha.
+  Future<void> alterarSenha({
+    required String accessToken,
+    required int id,
+    required String novaSenha,
+  }) async {
+    final http.Response response;
+
+    try {
+      response = await _client.patch(
+        Uri.parse('${ApiConfig.baseUrl}$_usuariosPath$id/senha/'),
+        headers: {..._headers, 'Authorization': 'Bearer $accessToken'},
+        body: jsonEncode({'password': novaSenha}),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    if (response.statusCode != 200) {
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível alterar a senha.',
+      );
+    }
+  }
+
+  // DISPONIBILIDADE DO SERVIDOR: GET /api/health/ (público).
+  // Devolve o tempo de resposta, ou lança ApiException se não responder.
+  Future<Duration> verificarServidor() async {
+    final cronometro = Stopwatch()..start();
+    final http.Response response;
+
+    try {
+      response = await _client
+          .get(Uri.parse('${ApiConfig.baseUrl}/health/'), headers: _headers)
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    if (response.statusCode != 200) {
+      throw ApiException(
+        'O servidor respondeu com erro (${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
+    }
+
+    return cronometro.elapsed;
   }
 
   // DELETAR USUÁRIO

@@ -24,6 +24,17 @@ class SessaoProvider extends ChangeNotifier {
 
   bool get podeAlterar => papel == 'PROFESSOR' || papel == 'SUPORTE';
 
+  /// Nome e e-mail só o professor altera (regra do back, contas/views.py).
+  bool get podeEditarPerfil => papel == 'PROFESSOR';
+
+  /// Busca de novo o usuário (GET /contas/me/), ex.: depois de editar o
+  /// perfil, para o nome atualizado aparecer em todo o app.
+  Future<void> recarregarUsuario() async {
+    final usuario = await comToken((token) => _service.buscarMe(token));
+    _usuario = usuario;
+    notifyListeners();
+  }
+
   String get nomeExibicao {
     final nome = _usuario?.nomeCompleto ?? '';
     if (nome.isNotEmpty) return nome;

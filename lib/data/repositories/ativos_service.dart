@@ -136,6 +136,41 @@ class AtivosService {
         : movimentacoes.take(limite).toList();
   }
 
+  // CONSULTAR PELO CÓDIGO DO QR CODE: GET /ativos/?codigo_qr=<código>
+  // Devolve null quando nenhum ativo tem esse código.
+  Future<Ativo?> buscarPorCodigo({
+    required String accessToken,
+    required String codigo,
+  }) async {
+    final http.Response response;
+
+    try {
+      response = await _client.get(
+        Uri.parse('${ApiConfig.baseUrl}/ativos/').replace(
+          queryParameters: {'codigo_qr': codigo},
+        ),
+        headers: _headers(accessToken),
+      );
+    } catch (_) {
+      throw ApiException.semConexao();
+    }
+
+    if (response.statusCode != 200) {
+      throw ApiException.fromResponse(
+        response,
+        mensagemPadrao: 'Não foi possível consultar o código.',
+      );
+    }
+
+    final dados = jsonDecode(utf8.decode(response.bodyBytes));
+    final itens = dados is Map<String, dynamic> && dados['results'] is List
+        ? dados['results'] as List<dynamic>
+        : dados as List<dynamic>;
+
+    final encontrados = itens.whereType<Map<String, dynamic>>().toList();
+    return encontrados.isEmpty ? null : Ativo.fromMap(encontrados.first);
+  }
+
   // CONSULTAR UM ATIVO
   Future<Ativo> buscarAtivo({
     required String accessToken,

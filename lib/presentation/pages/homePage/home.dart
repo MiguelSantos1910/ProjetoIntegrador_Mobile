@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:mobile_integrador/data/repositories/ativos_service.dart';
+import 'package:mobile_integrador/presentation/providers/sessao_provider.dart';
 import 'package:mobile_integrador/routes/routes.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/cardsManutencao/maintence_card.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/notificacao/notification.dart';
@@ -10,14 +12,8 @@ import 'package:mobile_integrador/presentation/widgets/shared/appColors/app_colo
 import 'package:mobile_integrador/presentation/widgets/shared/card/card.dart';
 
 class HomePage extends StatefulWidget {
-  final String accessToken;
-  final String username;
-
-  const HomePage({
-    super.key,
-    required this.accessToken,
-    required this.username,
-  });
+  // Token e usuário vêm do SessaoProvider, não mais dos argumentos da rota.
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -65,8 +61,10 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final resultado = await _ativosService.buscarAtivos(
-        accessToken: widget.accessToken,
+      final sessao = context.read<SessaoProvider>();
+
+      final resultado = await sessao.comToken(
+        (token) => _ativosService.buscarAtivos(accessToken: token),
       );
 
       // O AtivosService já retorna objetos do model Ativo.
@@ -79,6 +77,15 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (_) {
       if (!mounted) return;
+
+      // Token vencido e sem renovação: a sessão foi encerrada.
+      if (!context.read<SessaoProvider>().logado) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.login,
+          (_) => false,
+        );
+        return;
+      }
 
       setState(() {
         _erro =
@@ -206,27 +213,61 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSaudacao() {
-    final username = widget.username.trim();
-    final nomeExibido = username.isEmpty ? 'Usuário' : username;
+    final nomeExibido = context.watch<SessaoProvider>().nomeExibicao;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Olá, $nomeExibido!',
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
+    // Card no mesmo padrão dos painéis da Home (_PainelGrafico).
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundCards,
+        border: Border.all(color: AppColors.borderColor),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.mainColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.waving_hand_outlined,
+              color: AppColors.mainColor,
+              size: 24,
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Bem-vindo ao Easy Asset.',
-          style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-        ),
-      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Olá, $nomeExibido!',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Bem-vindo ao Easy Asset.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

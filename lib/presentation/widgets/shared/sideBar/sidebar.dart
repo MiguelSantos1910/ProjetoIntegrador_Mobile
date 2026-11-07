@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:mobile_integrador/presentation/providers/sessao_provider.dart';
 import 'package:mobile_integrador/routes/routes.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/appColors/app_colors.dart';
 
@@ -36,52 +38,32 @@ class SideBar extends StatelessWidget {
       'Configurações',
       AppRoutes.configuracoes,
     ),
+    _SidebarItemData(Icons.logout_rounded, 'Sair', AppRoutes.sair),
   ];
 
-  void _navigate(BuildContext context, String route, String? rotaAtual) {
+  // A sessão fica no SessaoProvider: navegar não precisa mais levar o
+  // token nos argumentos da rota.
+  Future<void> _navigate(
+    BuildContext context,
+    String route,
+    String? rotaAtual,
+  ) async {
     if (route == rotaAtual) return;
 
-    // Recupera os argumentos da rota atual.
-    final argumentosAtuais = ModalRoute.of(context)?.settings.arguments;
+    if (route == AppRoutes.sair) {
+      // Invalida o refresh no back (grava LOGOUT) e limpa a sessão.
+      await context.read<SessaoProvider>().logout();
+      if (!context.mounted) return;
 
-    // Preserva os dados da sessão durante a navegação.
-    Map<String, dynamic>? argumentos;
-
-    if (argumentosAtuais is Map<String, dynamic>) {
-      argumentos = Map<String, dynamic>.from(argumentosAtuais);
+      // Volta ao login e apaga o histórico de telas.
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.login,
+        (_) => false,
+      );
+      return;
     }
 
-    // A Home e a tela de Ativos dependem dos dados da sessão.
-    if (route == AppRoutes.home || route == AppRoutes.ativos) {
-      final accessToken = argumentos?['accessToken'];
-      final username = argumentos?['username'];
-
-      if (accessToken is! String || accessToken.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Não foi possível recuperar sua sessão. Faça login novamente.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      // A Home exige token e nome de usuário.
-      if (route == AppRoutes.home &&
-          (username is! String || username.trim().isEmpty)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Dados do usuário não encontrados. Faça login novamente.',
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
-    Navigator.pushReplacementNamed(context, route, arguments: argumentos);
+    Navigator.pushReplacementNamed(context, route);
   }
 
   @override

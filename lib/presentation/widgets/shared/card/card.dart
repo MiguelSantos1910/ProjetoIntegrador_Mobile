@@ -37,28 +37,39 @@ class CardApp extends StatelessWidget {
 
             const SizedBox(width: 12),
 
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // Expanded: o texto ocupa só o espaço que sobra ao lado do ícone
+            // (sem ele, títulos longos estouram cards estreitos).
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
 
-              children: [
-                Text(
-                  titulo,
+                children: [
+                  Text(
+                    titulo,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
 
-                  style: const TextStyle(color: Colors.black, fontSize: 13),
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  valor,
-
-                  style: TextStyle(
-                    color: AppColors.mainColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    style: const TextStyle(color: Colors.black, fontSize: 13),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 8),
+
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      valor,
+
+                      style: TextStyle(
+                        color: AppColors.mainColor,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

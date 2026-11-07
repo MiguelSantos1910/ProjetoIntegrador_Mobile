@@ -11,7 +11,8 @@ import 'package:mobile_integrador/presentation/providers/sessao_provider.dart';
 import 'package:mobile_integrador/routes/routes.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/cardChamado/card_chamado.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/statusBadge/status_badge.dart';
-import 'package:mobile_integrador/presentation/widgets/shared/notificacao/notification.dart';
+import 'package:mobile_integrador/core/utils/formatar_data.dart';
+import 'package:mobile_integrador/data/models/movimentacao.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/appColors/app_colors.dart';
 import 'package:mobile_integrador/presentation/widgets/shared/card/card.dart';
 
@@ -38,6 +39,12 @@ class _HomePageState extends State<HomePage> {
   bool _carregandoChamados = true;
   String? _erroChamados;
 
+  // Últimas movimentações dos ativos (GET /api/historico/).
+  static const int _limiteMovimentacoes = 5;
+  List<Movimentacao> _movimentacoes = [];
+  bool _carregandoMovimentacoes = true;
+  String? _erroMovimentacoes;
+
   static const List<_StatusInfo> _statusInfo = [
     _StatusInfo(chave: 'ATIVO', titulo: 'Ativos', cor: Color(0xFF16A34A)),
     _StatusInfo(
@@ -57,6 +64,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _carregarAtivos();
     _carregarChamados();
+    _carregarMovimentacoes();
   }
 
   @override
@@ -203,11 +211,11 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 32),
 
-                    _buildTituloSecao('Notificações Recentes (demonstrativo)'),
+                    _buildTituloSecao('Movimentações Recentes'),
 
                     const SizedBox(height: 14),
 
-                    _buildNotificacoes(context),
+                    _buildMovimentacoes(),
 
                     const SizedBox(height: 32),
 
@@ -265,6 +273,89 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _carregarMovimentacoes() async {
+    if (!mounted) return;
+
+    setState(() {
+      _carregandoMovimentacoes = _movimentacoes.isEmpty;
+      _erroMovimentacoes = null;
+    });
+
+    try {
+      final movimentacoes = await context.read<SessaoProvider>().comToken(
+        (token) => _ativosService.listarHistorico(
+          accessToken: token,
+          limite: _limiteMovimentacoes,
+        ),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _movimentacoes = movimentacoes;
+        _carregandoMovimentacoes = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _erroMovimentacoes = 'Não foi possível carregar as movimentações.';
+        _carregandoMovimentacoes = false;
+      });
+    }
+  }
+
+  /// Nome do ativo pelo id, a partir da lista já carregada na Home.
+  String _nomeDoAtivo(int ativoId) {
+    for (final item in _ativos) {
+      if (item is Ativo && item.id == ativoId.toString()) {
+        return item.descricao;
+      }
+    }
+    return 'Ativo #$ativoId';
+  }
+
+  Widget _buildMovimentacoes() {
+    if (_carregandoMovimentacoes) return const _EstadoCarregamento();
+
+    if (_erroMovimentacoes != null) {
+      return _PainelGrafico(
+        titulo: 'Movimentações indisponíveis',
+        subtitulo: _erroMovimentacoes!,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _carregarMovimentacoes,
+            style: TextButton.styleFrom(foregroundColor: AppColors.mainColor),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Tentar novamente'),
+          ),
+        ),
+      );
+    }
+
+    if (_movimentacoes.isEmpty) {
+      return const _PainelGrafico(
+        titulo: 'Nenhuma movimentação registrada',
+        subtitulo:
+            'Cadastros, manutenções, devoluções e inativações aparecem aqui.',
+        child: SizedBox.shrink(),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final movimentacao in _movimentacoes) ...[
+          _CardMovimentacao(
+            movimentacao: movimentacao,
+            nomeAtivo: _nomeDoAtivo(movimentacao.ativoId),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+
   /// Ativo de cada chamado, a partir da lista já carregada na Home.
   Ativo? _ativoDoChamado(OrdemManutencao ordem) {
     for (final item in _ativos) {
@@ -282,6 +373,7 @@ class _HomePageState extends State<HomePage> {
     if (alterado == true && mounted) {
       _carregarChamados();
       _carregarAtivos();
+      _carregarMovimentacoes();
     }
   }
 
@@ -710,34 +802,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  // Conteúdo demonstrativo: o serializer/endpoint de ativos fornecido
-  // não disponibiliza notificações. Integrar quando houver endpoint próprio.
-  Widget _buildNotificacoes(BuildContext context) {
-    return Column(
-      children: [
-        NotificationWidget(
-          type: NotificationType.warning,
-          title: 'Manutenção próxima',
-          description: 'Existe uma manutenção próxima do vencimento.',
-          name: 'Notebook Lenovo',
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.ordemServico);
-          },
-        ),
-        const SizedBox(height: 12),
-        NotificationWidget(
-          type: NotificationType.success,
-          title: 'Manutenção concluída',
-          description: 'A manutenção foi concluída com sucesso.',
-          name: 'Projetor Epson',
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.ordemServico);
-          },
-        ),
-      ],
-    );
-  }
 }
 
 class _PainelGrafico extends StatelessWidget {
@@ -880,4 +944,99 @@ class _StatusInfo {
     required this.titulo,
     required this.cor,
   });
+}
+
+// ================================================================
+// CARD DE UMA MOVIMENTAÇÃO (evento do histórico de um ativo)
+// ================================================================
+
+class _CardMovimentacao extends StatelessWidget {
+  final Movimentacao movimentacao;
+  final String nomeAtivo;
+
+  const _CardMovimentacao({
+    required this.movimentacao,
+    required this.nomeAtivo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final evento = movimentacao.tipoEvento;
+    final cor = EventoAtivo.cor(evento);
+    final usuario = movimentacao.usuarioNome;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundCards,
+        border: Border.all(color: AppColors.borderColor),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: cor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(EventoAtivo.icone(evento), color: cor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  EventoAtivo.rotulo(evento),
+                  style: TextStyle(
+                    color: cor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  nomeAtivo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (movimentacao.descricao.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    movimentacao.descricao,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(
+                  [
+                    if (usuario != null && usuario.isNotEmpty) usuario,
+                    dataHoraFormatada(movimentacao.data),
+                  ].join(' · '),
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

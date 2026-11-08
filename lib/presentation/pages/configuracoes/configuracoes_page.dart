@@ -39,10 +39,12 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
 
   // Senha
   final _formSenha = GlobalKey<FormState>();
+  final _senhaAtualController = TextEditingController();
   final _senhaController = TextEditingController();
   final _confirmarController = TextEditingController();
   bool _alterandoSenha = false;
   String? _erroSenhaApi;
+  String? _erroSenhaAtualApi;
 
   // Conexão
   bool _testando = false;
@@ -61,6 +63,7 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
   void dispose() {
     _nomeController.dispose();
     _emailController.dispose();
+    _senhaAtualController.dispose();
     _senhaController.dispose();
     _confirmarController.dispose();
     _usuariosService.dispose();
@@ -140,7 +143,10 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
   Future<void> _alterarSenha() async {
     if (_alterandoSenha) return;
 
-    setState(() => _erroSenhaApi = null);
+    setState(() {
+      _erroSenhaApi = null;
+      _erroSenhaAtualApi = null;
+    });
     if (!_formSenha.currentState!.validate()) return;
 
     final sessao = context.read<SessaoProvider>();
@@ -155,23 +161,38 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
           accessToken: token,
           id: usuario.id,
           novaSenha: _senhaController.text,
+          senhaAtual: _senhaAtualController.text,
         ),
       );
 
       if (!mounted) return;
 
-      _senhaController.clear();
-      _confirmarController.clear();
       FocusScope.of(context).unfocus();
-      _mostrar('Senha alterada. Use a nova senha no próximo login.');
+      _mostrar('Senha alterada. Entre novamente com a nova senha.');
+
+      // O back encerra todas as sessões da conta depois da troca
+      // (inclusive esta): limpa a sessão e volta ao login.
+      await sessao.logout();
+      if (!mounted) return;
+
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.login,
+        (_) => false,
+      );
     } on ApiException catch (e) {
       if (!mounted) return;
 
-      // Regras do Django (senha comum, só números...) vêm em "password".
-      setState(() => _erroSenhaApi = e.errosPorCampo['password']);
+      // Senha atual errada vem em "senha_atual"; regras do Django
+      // (senha comum, só números...) vêm em "password".
+      setState(() {
+        _erroSenhaAtualApi = e.errosPorCampo['senha_atual'];
+        _erroSenhaApi = e.errosPorCampo['password'];
+      });
       _formSenha.currentState!.validate();
 
-      if (_erroSenhaApi == null) _mostrar(e.mensagem, erro: true);
+      if (_erroSenhaApi == null && _erroSenhaAtualApi == null) {
+        _mostrar(e.mensagem, erro: true);
+      }
     } finally {
       if (mounted) setState(() => _alterandoSenha = false);
     }
@@ -465,6 +486,23 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
         child: AutofillGroup(
           child: Column(
             children: [
+              FormData(
+                label: 'Senha atual',
+                hintText: 'Digite a senha atual',
+                prefixIcon: Icons.lock_outline_rounded,
+                controller: _senhaAtualController,
+                isPassword: true,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.password],
+                onChanged: (_) => _erroSenhaAtualApi = null,
+                validator: (valor) {
+                  if (valor == null || valor.isEmpty) {
+                    return 'Digite a senha atual.';
+                  }
+                  return _erroSenhaAtualApi;
+                },
+              ),
+              const SizedBox(height: 18),
               FormData(
                 label: 'Nova senha',
                 hintText: 'Digite a nova senha',

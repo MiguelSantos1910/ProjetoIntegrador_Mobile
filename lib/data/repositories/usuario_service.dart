@@ -187,6 +187,7 @@ class UsuariosService {
     required String accessToken,
     required int id,
     required String novaSenha,
+    String? senhaAtual,
   }) async {
     final http.Response response;
 
@@ -194,7 +195,10 @@ class UsuariosService {
       response = await _client.patch(
         Uri.parse('${ApiConfig.baseUrl}$_usuariosPath$id/senha/'),
         headers: {..._headers, 'Authorization': 'Bearer $accessToken'},
-        body: jsonEncode({'password': novaSenha}),
+        body: jsonEncode({
+          'password': novaSenha,
+          'senha_atual': ?senhaAtual,
+        }),
       );
     } catch (_) {
       throw ApiException.semConexao();

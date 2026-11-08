@@ -99,6 +99,8 @@ class EventoAtivo {
         return 'Reativação do ativo';
       case 'RETORNO':
         return 'Retorno ao uso';
+      case 'MUDANCA_SALA':
+        return 'Mudança de sala';
       default:
         return evento.trim().isEmpty ? 'Movimentação' : evento;
     }
@@ -119,6 +121,8 @@ class EventoAtivo {
       case 'REATIVACAO':
       case 'RETORNO':
         return const Color(0xFF16A34A);
+      case 'MUDANCA_SALA':
+        return const Color(0xFF2563EB);
       default:
         return const Color(0xFF94A3B8);
     }
@@ -140,6 +144,8 @@ class EventoAtivo {
         return Icons.restart_alt_rounded;
       case 'RETORNO':
         return Icons.check_circle_outline_rounded;
+      case 'MUDANCA_SALA':
+        return Icons.meeting_room_outlined;
       default:
         return Icons.swap_horiz_rounded;
     }
